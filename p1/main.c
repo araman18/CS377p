@@ -2,52 +2,92 @@
 #include <stdlib.h>
 #include <time.h>
 
+void mmm();
+void multiply(double **matrix1, double **matrix2, double **result, int r, int c, int p);
 
-#define LIMIT 100
-//i-j-k, j-i-k, j-k-i, k-j-i, i-k-j, k-i-j
-void initialize(double matrix_1[][SIZE], double matrix_2[][SIZE]);
-void test_i_j_k(double matrix_1[][SIZE], double matrix_2[][SIZE], double result[][SIZE]);
-void test_j_i_k(double matrix_1[][SIZE], double matrix_2[][SIZE], double result[][SIZE]);
-void test_j_k_i(double matrix_1[][SIZE], double matrix_2[][SIZE], double result[][SIZE]);
-void test_k_j_i(double matrix_1[][SIZE], double matrix_2[][SIZE], double result[][SIZE]);
-void test_i_k_j(double matrix_1[][SIZE], double matrix_2[][SIZE], double result[][SIZE]);
-void test_k_i_j(double matrix_1[][SIZE], double matrix_2[][SIZE], double result[][SIZE]);
-
-
-
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
   /* code */
-  double matrix_1[SIZE][SIZE] = {0};
-  double matrix_2[SIZE][SIZE] = {0};
-  initialize(matrix_1, matrix_2);
-  double result[SIZE][SIZE] = {0};
-  
-
+  mmm();
   return 0;
 }
 
 
-void test_i_j_k(double matrix_1[][SIZE], double matrix_2[][SIZE], double result[][SIZE])
+
+
+void free_matrix(double **matrix, int r)
 {
-  for(int i = 0; i < SIZE; ++i){
-    for(int j = 0; j < SIZE; ++j){
-      for(int k = 0; k < SIZE: ++k){
-        result[i][j] += (matrix_1[i][k] * matrix_2[k][j]);
-      }
-    }
+  for(int i = 0; i < r; ++i){
+    free(matrix[i]);
   }
+  free(matrix);
+}
+
+double** make_matrix(size_t r, size_t col)
+{
+  double **matrix1;
+  matrix1 = malloc(sizeof(double *) * r);
+  for(int i = 0; i < r; ++i){
+    *(matrix1 + i) = malloc(sizeof(double) * col);
+  }
+  return matrix1;
 }
 
 
-void initialize(double matrix_1[][SIZE], double matrix_2[][SIZE])
+void set_matrix(FILE *fp, double **matrix, size_t r, size_t c)
 {
-  srand(time(NULL));
-  for(int r = 0; r < SIZE; ++r){
-    for(int c = 0; c < SIZE; ++c){
-      matrix_1[r][c] = (rand() % (LIMIT));
-      matrix_2[r][c] = (rand() % (LIMIT));
-      //printf("%f %f\n", matrix_1[r][c], matrix_2[r][c]);
+  for(int i = 0; i < r; ++i){
+    for(int j = 0; j < c; ++j){
+      fscanf(fp, "%lf ", &matrix[i][j]);
+      printf("%.2lf ", matrix[i][j]);
     }
+    printf("\n");
   }
+}
+/*
+30 60 90.7
+14 28 42.3
+*/
+
+void multiply(double **matrix1, double **matrix2, double **result, int r, int c, int p)
+{
+
+  printf("%d %d\n", r, c);
+  for(int i = 0; i < r; ++i)
+  {
+    for(int j = 0; j < c; ++j)
+    {
+      result[i][j] = 0;
+      for(int k = 0; k < p; ++k)
+      {
+        result[i][j] += matrix1[i][k] * matrix2[k][j];
+      }
+      printf("%.2lf ", result[i][j]);
+    }
+    printf("\n");
+  }
+}
+
+void mmm()
+{
+  const char *filename = "matrix.txt";
+  FILE *fp = fopen(filename, "r");
+  if(!fp){
+    printf("Invalid file\n");
+    exit(-1);
+  }else{
+    int item[2];
+    fscanf(fp, "%d %d", item, item  + 1);
+    int row_size_1 = item[0];
+    int col_size_1 = item[1];
+    double **matrix_1 = make_matrix(row_size_1, col_size_1);
+    set_matrix(fp, matrix_1, row_size_1, col_size_1);
+    fscanf(fp, "%d %d", item, item  + 1);
+    int row_size_2 =item[0];
+    int col_size_2 =item[1];
+    double **matrix_2 = make_matrix(row_size_2, col_size_2);
+    set_matrix(fp, matrix_2, row_size_2, col_size_2);
+    double **result = make_matrix(row_size_1, col_size_2);
+    multiply(matrix_1, matrix_2, result, row_size_1, col_size_2, col_size_1);
+  }
+  fclose(fp);
 }
