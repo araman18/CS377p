@@ -11,9 +11,6 @@ int main(int argc, char const *argv[]) {
   return 0;
 }
 
-
-
-
 void free_matrix(double **matrix, int r)
 {
   for(int i = 0; i < r; ++i){
@@ -38,9 +35,9 @@ void set_matrix(FILE *fp, double **matrix, size_t r, size_t c)
   for(int i = 0; i < r; ++i){
     for(int j = 0; j < c; ++j){
       fscanf(fp, "%lf ", &matrix[i][j]);
-      printf("%.2lf ", matrix[i][j]);
+      //printf("%.2lf ", matrix[i][j]);
     }
-    printf("\n");
+    //printf("\n");
   }
 }
 /*
@@ -51,7 +48,7 @@ void set_matrix(FILE *fp, double **matrix, size_t r, size_t c)
 void multiply(double **matrix1, double **matrix2, double **result, int r, int c, int p)
 {
 
-  printf("%d %d\n", r, c);
+  //printf("%d %d\n", r, c);
   for(int i = 0; i < r; ++i)
   {
     for(int j = 0; j < c; ++j)
@@ -61,10 +58,21 @@ void multiply(double **matrix1, double **matrix2, double **result, int r, int c,
       {
         result[i][j] += matrix1[i][k] * matrix2[k][j];
       }
-      printf("%.2lf ", result[i][j]);
+      //printf("%.2lf ", result[i][j]);
     }
-    printf("\n");
+    //printf("\n");
   }
+}
+
+void write_to_file(double **matrix, int r, int c){
+  FILE *fp = fopen("res.txt", "w");
+  for(int i = 0; i < r; ++i){
+    for(int j = 0; j < c; ++j){
+      fprintf(fp, "%.1lf ", matrix[i][j]);
+    }
+    fprintf(fp, "\n");
+  }
+  fclose(fp);
 }
 
 void mmm()
@@ -88,6 +96,7 @@ void mmm()
     set_matrix(fp, matrix_2, row_size_2, col_size_2);
     double **result = make_matrix(row_size_1, col_size_2);
     multiply(matrix_1, matrix_2, result, row_size_1, col_size_2, col_size_1);
+    write_to_file(result, row_size_1, col_size_2);
   }
   fclose(fp);
 }
