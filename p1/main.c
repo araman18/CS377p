@@ -3,12 +3,29 @@
 #include <time.h>
 
 void mmm();
+void mmm_tests(size_t n);
 void multiply(double **matrix1, double **matrix2, double **result, int r, int c, int p);
+void free_matrix(double **matrix, int r);
+double** make_matrix(size_t r, size_t col);
+void set_matrix(FILE *fp, double **matrix, size_t r, size_t c);
+void write_to_file(double **matrix, int r, int c);
+
+
 
 int main(int argc, char const *argv[]) {
-  /* code */
-  mmm();
+
+  if(argc == 1){
+     mmm();
+  }else {
+    int n = atoi(argv[1]);
+    mmm_tests(n);
+  }
   return 0;
+}
+
+
+void mmm_tests(size_t n){
+  
 }
 
 void free_matrix(double **matrix, int r)
@@ -40,15 +57,9 @@ void set_matrix(FILE *fp, double **matrix, size_t r, size_t c)
     //printf("\n");
   }
 }
-/*
-30 60 90.7
-14 28 42.3
-*/
 
 void multiply(double **matrix1, double **matrix2, double **result, int r, int c, int p)
 {
-
-  //printf("%d %d\n", r, c);
   for(int i = 0; i < r; ++i)
   {
     for(int j = 0; j < c; ++j)

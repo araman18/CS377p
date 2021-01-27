@@ -5,5 +5,6 @@ CFLAGS=-I.
 
 mmm: main.o
 	$(CC) -o mmm main.o
+	
 clean:
-	rm main.o
+	rm *.o mmm
