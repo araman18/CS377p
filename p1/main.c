@@ -3,6 +3,7 @@
 #include <time.h>
 
 
+#include "papi.h"
 
 #define LIMIT 1000
 
