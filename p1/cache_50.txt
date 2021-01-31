@@ -1,0 +1,30 @@
+I J K Results
+L1 Data Cache miss : 1463
+L1 Data Cache accesses : 380747
+L2 Data Cache miss : 277
+L2 Data Cache accesses : 1463
+I K J Results
+L1 Data Cache miss : 1552
+L1 Data Cache accesses : 200887
+L2 Data Cache miss : 104
+L2 Data Cache accesses : 1552
+J I K Results
+L1 Data Cache miss : 5473
+L1 Data Cache accesses : 389067
+L2 Data Cache miss : 17
+L2 Data Cache accesses : 5473
+J K I Results
+L1 Data Cache miss : 5526
+L1 Data Cache accesses : 643017
+L2 Data Cache miss : 4
+L2 Data Cache accesses : 5526
+K I J Results
+L1 Data Cache miss : 1987
+L1 Data Cache accesses : 203127
+L2 Data Cache miss : 72
+L2 Data Cache accesses : 1987
+K J I Results
+L1 Data Cache miss : 2143
+L1 Data Cache accesses : 643174
+L2 Data Cache miss : 93
+L2 Data Cache accesses : 2143
