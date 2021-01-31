@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-
-
-#include "papi.h"
+#include <papi.h>
 
 #define LIMIT 1000
 
@@ -18,21 +16,34 @@ void set_matrix(FILE *fp, double **matrix, size_t r, size_t c);
 
 //Methods for variant testing.
 void write_to_file(double **matrix, int r, int c);
-void i_j_k(double **m1, double **m2, double **result);
-void i_k_j(double **m1, double **m2, double **result);
-void j_i_k(double **m1, double **m2, double **result);
-void j_k_i(double **m1, double **m2, double **result);
-void k_i_j(double **m1, double **m2, double **result);
-void k_j_i(double **m1, double **m2, double **result);
+void i_j_k(double **m1, double **m2, double **result, long long counters[], int PAPI_events[]);
+void i_k_j(double **m1, double **m2, double **result, long long counters[], int PAPI_events[]);
+void j_i_k(double **m1, double **m2, double **result, long long counters[], int PAPI_events[]);
+void j_k_i(double **m1, double **m2, double **result, long long counters[], int PAPI_events[]);
+void k_i_j(double **m1, double **m2, double **result, long long counters[], int PAPI_events[]);
+void k_j_i(double **m1, double **m2, double **result, long long counters[], int PAPI_events[]);
 void set_matrix_random(double **matrix);
 void clear_matrix(double **matrix);
+
+void cache_print(long long counters[]);
+void other_print(long long counters[]);
 
 
 int SIZE;
 
+
+/*
+Total cycles
+Total instructions
+Total Load Store Instructions
+Total Floating Point Instructions
+L1 data cache accesses and misses
+L2 data cache accesses and misses
+*/
+
+
 int main(int argc, char const *argv[])
 {
-
   if(argc == 1){
      mmm();
   }else {
@@ -45,21 +56,74 @@ int main(int argc, char const *argv[])
 
 void mmm_tests()
 {
-  double **matrix_1 = make_matrix(SIZE, SIZE);
-  double **matrix_2 = make_matrix(SIZE, SIZE);
+  double **m1 = make_matrix(SIZE, SIZE);
+  double **m2 = make_matrix(SIZE, SIZE);
   double **result = make_matrix(SIZE, SIZE);
 
-  set_matrix_random(matrix_1);
-  set_matrix_random(matrix_2);
+  int i  = PAPI_library_init(PAPI_VER_CURRENT);
+  int num_counters = PAPI_num_counters(); // 6
+
+
+
+  long long counters[4];
+  int PAPI_events_cache[] = {
+      PAPI_L1_DCM,
+      PAPI_L2_DCM,
+      PAPI_L1_DCA,
+      PAPI_L2_DCA,
+  };
+
+  int PAPI_events_other[] = {
+      PAPI_LD_INS,
+      PAPI_SR_INS,
+      PAPI_FP_INS,
+      PAPI_TOT_INS,
+      PAPI_TOT_CYC
+  };
+
+  set_matrix_random(m1);
+  set_matrix_random(m2);
+
   clear_matrix(result);
+  i_j_k(m1,m2,result, counters, PAPI_events_cache);
 
+  clear_matrix(result);
+  i_k_j(m1,m2,result, counters, PAPI_events_cache);
 
-  // IJK test
+  clear_matrix(result);
+  j_i_k(m1,m2,result, counters, PAPI_events_cache);
+
+  clear_matrix(result);
+  j_k_i(m1,m2,result, counters, PAPI_events_cache);
+
+  clear_matrix(result);
+  k_i_j(m1,m2,result, counters, PAPI_events_cache);
+
+  clear_matrix(result);
+  k_j_i(m1,m2,result, counters, PAPI_events_cache);
+
+  free_matrix(m1, SIZE);
+  free_matrix(m2, SIZE);
+  free_matrix(result, SIZE);
 }
 
+void cache_print(long long counters[]){
+  printf("L1 Data Cache miss : %lld\n", counters[0]);
+  printf("L1 Data Cache accesses : %lld\n", counters[2]);
+  printf("L2 Data Cache miss : %lld\n", counters[1]);
+  printf("L2 Data Cache accesses : %lld\n", counters[3]);
+}
+void other_print(long long counters[]){
+  printf("Load instructions: %lld\n", counters[0]);
+  printf("Store instructions: %lld\n", counters[1]);
+  printf("Floating point instructions: %lld\n", counters[2]);
+  printf("Total instructions: %lld\n", counters[3]);
+  printf("Total cycle: %lld\n", counters[4]);
+}
 
-void i_j_k(double **m1, double **m2, double **result)
+void i_j_k(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
+  int i = PAPI_start_counters(PAPI_events, 4);
   for(int i = 0; i < SIZE; ++i){
     for(int j = 0; j < SIZE; ++j){
       for(int k = 0; k < SIZE; ++k){
@@ -67,9 +131,11 @@ void i_j_k(double **m1, double **m2, double **result)
       }
     }
   }
+  PAPI_read_counters(counters, 4);
+  cache_print(counters);
 }
 
-void i_k_j(double **m1, double **m2, double **result)
+void i_k_j(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
   for(int i = 0; i < SIZE; ++i){
     for(int k = 0; k < SIZE; ++k){
@@ -80,7 +146,7 @@ void i_k_j(double **m1, double **m2, double **result)
   }
 }
 
-void j_i_k(double **m1, double **m2, double **result)
+void j_i_k(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
   for(int j = 0; j < SIZE; ++j){
     for(int i = 0; i < SIZE; ++i){
@@ -92,7 +158,7 @@ void j_i_k(double **m1, double **m2, double **result)
 }
 
 
-void j_k_i(double **m1, double **m2, double **result)
+void j_k_i(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
   for(int j = 0; j < SIZE; ++j){
     for(int k = 0; k < SIZE; ++k){
@@ -103,7 +169,7 @@ void j_k_i(double **m1, double **m2, double **result)
   }
 }
 
-void k_i_j(double **m1, double **m2, double **result)
+void k_i_j(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
   for(int k = 0; k < SIZE; ++k){
     for(int i = 0; i < SIZE; ++i){
@@ -114,7 +180,7 @@ void k_i_j(double **m1, double **m2, double **result)
   }
 }
 
-void k_j_i(double **m1, double **m2, double **result)
+void k_j_i(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
   for(int k = 0; k < SIZE; ++k){
     for(int j = 0; j < SIZE; ++j){
@@ -144,10 +210,10 @@ void free_matrix(double **matrix, int r)
 }
 
 void set_matrix_random(double **matrix){
-  srand(time(NULL));
   for(int i = 0; i < SIZE; ++i){
     for(int j = 0; j < SIZE; ++j){
       matrix[i][j] = (rand() % LIMIT);
+      //printf("%f\n",matrix[i][j]);
     }
   }
 }
