@@ -52,7 +52,6 @@ int main(int argc, char const *argv[])
   }else if(argc == 3){
     SIZE = atoi(argv[1]);
     FLAG = atoi(argv[2]);
-    printf("%d %d\n", SIZE, FLAG);
     mmm_tests();
   }else{
     printf("Arguments not correct\n");
@@ -68,7 +67,7 @@ void mmm_tests()
   double **m2 = make_matrix(SIZE, SIZE);
   double **result = make_matrix(SIZE, SIZE);
 
-  int i  = PAPI_library_init(PAPI_VER_CURRENT);
+  int i = PAPI_library_init(PAPI_VER_CURRENT);
   int num_counters = PAPI_num_counters(); // 6
 
 
@@ -79,7 +78,6 @@ void mmm_tests()
      PAPI_L2_DCM,
      PAPI_L1_DCA,
      PAPI_L2_DCA,
-     PAPI_TOT_CYC
   };
 
  int PAPI_other[] = {
@@ -151,7 +149,6 @@ void cache_print(long long counters[]){
   printf("L2 Data Cache miss : %lld\n", counters[1]);
   printf("L2 Data Cache accesses : %lld\n", counters[3]);
   printf("L2 Miss rate : %.2f\n", 100 * (1.0 * counters[1])/counters[3]);
-  printf("%lld\n", counters[4]);
 }
 
 void other_print(long long counters[]){
@@ -170,12 +167,13 @@ void clear_cache(){
   for(int i = 0; i < LARGER; ++i){
     temp = to_clear[i];
   }
+  free(to_clear);
 }
 
 
 void i_j_k(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
-  int i = PAPI_start_counters(PAPI_events, 5);
+  int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int i = 0; i < SIZE; ++i){
     for(int j = 0; j < SIZE; ++j){
       for(int k = 0; k < SIZE; ++k){
@@ -183,7 +181,7 @@ void i_j_k(double **m1, double **m2, double **result, long long counters[], int 
       }
     }
   }
-  PAPI_read_counters(counters, 5);
+  PAPI_read_counters(counters, FLAG ? 4 : 5);
   printf("I J K Results\n");
   if(FLAG){
     cache_print(counters);
@@ -194,7 +192,7 @@ void i_j_k(double **m1, double **m2, double **result, long long counters[], int 
 
 void i_k_j(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
-  int i = PAPI_start_counters(PAPI_events, 5);
+  int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int i = 0; i < SIZE; ++i){
     for(int k = 0; k < SIZE; ++k){
       for(int j = 0; j < SIZE; ++j){
@@ -202,7 +200,7 @@ void i_k_j(double **m1, double **m2, double **result, long long counters[], int 
       }
     }
   }
-  PAPI_read_counters(counters, 5);
+  PAPI_read_counters(counters, FLAG ? 4 : 5);
   printf("I K J Results\n");
   if(FLAG){
     cache_print(counters);
@@ -213,7 +211,7 @@ void i_k_j(double **m1, double **m2, double **result, long long counters[], int 
 
 void j_i_k(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
-  int i = PAPI_start_counters(PAPI_events, 5);
+  int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int j = 0; j < SIZE; ++j){
     for(int i = 0; i < SIZE; ++i){
       for(int k = 0; k < SIZE; ++k){
@@ -221,7 +219,7 @@ void j_i_k(double **m1, double **m2, double **result, long long counters[], int 
       }
     }
   }
-  PAPI_read_counters(counters, 5);
+  PAPI_read_counters(counters, FLAG ? 4 : 5);
   printf("J I K Results\n");
   if(FLAG){
     cache_print(counters);
@@ -233,7 +231,7 @@ void j_i_k(double **m1, double **m2, double **result, long long counters[], int 
 
 void j_k_i(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
-  int i = PAPI_start_counters(PAPI_events, 5);
+  int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int j = 0; j < SIZE; ++j){
     for(int k = 0; k < SIZE; ++k){
       for(int i = 0; i < SIZE; ++i){
@@ -241,7 +239,7 @@ void j_k_i(double **m1, double **m2, double **result, long long counters[], int 
       }
     }
   }
-  PAPI_read_counters(counters, 5);
+  PAPI_read_counters(counters, FLAG ? 4 : 5);
   printf("J K I Results\n");
   if(FLAG){
     cache_print(counters);
@@ -252,7 +250,7 @@ void j_k_i(double **m1, double **m2, double **result, long long counters[], int 
 
 void k_i_j(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
-  int i = PAPI_start_counters(PAPI_events, 5);
+  int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int k = 0; k < SIZE; ++k){
     for(int i = 0; i < SIZE; ++i){
       for(int j = 0; j < SIZE; ++j){
@@ -260,7 +258,7 @@ void k_i_j(double **m1, double **m2, double **result, long long counters[], int 
       }
     }
   }
-  PAPI_read_counters(counters, 5);
+  PAPI_read_counters(counters, FLAG ? 4 : 5);
   printf("K I J Results\n");
   if(FLAG){
     cache_print(counters);
@@ -271,7 +269,7 @@ void k_i_j(double **m1, double **m2, double **result, long long counters[], int 
 
 void k_j_i(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
-  int i = PAPI_start_counters(PAPI_events, 5);
+  int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int k = 0; k < SIZE; ++k){
     for(int j = 0; j < SIZE; ++j){
       for(int i = 0; i < SIZE; ++i){
@@ -279,7 +277,7 @@ void k_j_i(double **m1, double **m2, double **result, long long counters[], int 
       }
     }
   }
-  PAPI_read_counters(counters, 5);
+  PAPI_read_counters(counters, FLAG ? 4 : 5);
   printf("K J I Results\n");
   if(FLAG){
     cache_print(counters);
