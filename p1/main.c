@@ -173,6 +173,8 @@ void clear_cache(){
 
 void i_j_k(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
+  struct timespec start, end;
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
   int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int i = 0; i < SIZE; ++i){
     for(int j = 0; j < SIZE; ++j){
@@ -182,16 +184,23 @@ void i_j_k(double **m1, double **m2, double **result, long long counters[], int 
     }
   }
   PAPI_read_counters(counters, FLAG ? 4 : 5);
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
   printf("I J K Results\n");
   if(FLAG){
     cache_print(counters);
   }else{
     other_print(counters);
   }
+  double time_taken;
+  time_taken = (end.tv_sec - start.tv_sec) * 1e9;
+  time_taken = (time_taken + (end.tv_nsec - start.tv_nsec)) * 1e-9;
+  printf("Time taken by I J K: %f seconds \n", time_taken);
 }
 
 void i_k_j(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
+  struct timespec start, end;
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
   int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int i = 0; i < SIZE; ++i){
     for(int k = 0; k < SIZE; ++k){
@@ -201,16 +210,25 @@ void i_k_j(double **m1, double **m2, double **result, long long counters[], int 
     }
   }
   PAPI_read_counters(counters, FLAG ? 4 : 5);
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
   printf("I K J Results\n");
   if(FLAG){
     cache_print(counters);
   }else{
     other_print(counters);
   }
+
+  double time_taken;
+  time_taken = (end.tv_sec - start.tv_sec) * 1e9;
+  time_taken = (time_taken + (end.tv_nsec - start.tv_nsec)) * 1e-9;
+  printf("Time taken by I J K: %f seconds\n", time_taken);
 }
 
 void j_i_k(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
+  printf("J I K Results\n");
+  struct timespec start, end;
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
   int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int j = 0; j < SIZE; ++j){
     for(int i = 0; i < SIZE; ++i){
@@ -220,17 +238,24 @@ void j_i_k(double **m1, double **m2, double **result, long long counters[], int 
     }
   }
   PAPI_read_counters(counters, FLAG ? 4 : 5);
-  printf("J I K Results\n");
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
   if(FLAG){
     cache_print(counters);
   }else{
     other_print(counters);
   }
+
+  double time_taken;
+  time_taken = (end.tv_sec - start.tv_sec) * 1e9;
+  time_taken = (time_taken + (end.tv_nsec - start.tv_nsec)) * 1e-9;
+  printf("Time taken by I J K: %f seconds\n", time_taken);
 }
 
 
 void j_k_i(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
+  struct timespec start, end;
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
   int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int j = 0; j < SIZE; ++j){
     for(int k = 0; k < SIZE; ++k){
@@ -240,16 +265,24 @@ void j_k_i(double **m1, double **m2, double **result, long long counters[], int 
     }
   }
   PAPI_read_counters(counters, FLAG ? 4 : 5);
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
   printf("J K I Results\n");
   if(FLAG){
     cache_print(counters);
   }else{
     other_print(counters);
   }
+
+  double time_taken;
+  time_taken = (end.tv_sec - start.tv_sec) * 1e9;
+  time_taken = (time_taken + (end.tv_nsec - start.tv_nsec)) * 1e-9;
+  printf("Time taken by I J K: %f seconds\n", time_taken);
 }
 
 void k_i_j(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
+  struct timespec start, end;
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
   int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int k = 0; k < SIZE; ++k){
     for(int i = 0; i < SIZE; ++i){
@@ -259,16 +292,24 @@ void k_i_j(double **m1, double **m2, double **result, long long counters[], int 
     }
   }
   PAPI_read_counters(counters, FLAG ? 4 : 5);
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
   printf("K I J Results\n");
   if(FLAG){
     cache_print(counters);
   }else{
     other_print(counters);
   }
+
+  double time_taken;
+  time_taken = (end.tv_sec - start.tv_sec) * 1e9;
+  time_taken = (time_taken + (end.tv_nsec - start.tv_nsec)) * 1e-9;
+  printf("Time taken by I J K: %f seconds\n", time_taken);
 }
 
 void k_j_i(double **m1, double **m2, double **result, long long counters[], int PAPI_events[])
 {
+  struct timespec start, end;
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
   int i = PAPI_start_counters(PAPI_events, FLAG ? 4 : 5);
   for(int k = 0; k < SIZE; ++k){
     for(int j = 0; j < SIZE; ++j){
@@ -278,12 +319,18 @@ void k_j_i(double **m1, double **m2, double **result, long long counters[], int 
     }
   }
   PAPI_read_counters(counters, FLAG ? 4 : 5);
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
   printf("K J I Results\n");
   if(FLAG){
     cache_print(counters);
   }else{
     other_print(counters);
   }
+
+  double time_taken;
+  time_taken = (end.tv_sec - start.tv_sec) * 1e9;
+  time_taken = (time_taken + (end.tv_nsec - start.tv_nsec)) * 1e-9;
+  printf("Time taken by I J K: %f seconds\n", time_taken);
 }
 
 void clear_matrix(double **matrix){
