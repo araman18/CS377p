@@ -416,7 +416,7 @@ void write_to_file(double **matrix, int r, int c)
   FILE *fp = fopen("res.txt", "w");
   for(int i = 0; i < r; ++i){
     for(int j = 0; j < c; ++j){
-      fprintf(fp, "%.1lf ", matrix[i][j]);
+      fprintf(fp, "%.2lf ", matrix[i][j]);
     }
     fprintf(fp, "\n");
   }
