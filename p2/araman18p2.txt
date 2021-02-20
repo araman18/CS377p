@@ -21,13 +21,13 @@ testl %esi, %esi            - checks the length value passed in the esi register
 jle .L4                     -  if this val <= 0 then jump to label 4 since loop doesn't have to be entered
 movq %rdi, %rax	            -  move the parameter "input" that was originally in rdi to rax
 leal -1(%rsi), %edx         -  assigns the value of rsi - 1(last index loop hits) to the edx register.
-leaq 4(%rdi,%rdx,4), %rcx
+leaq 4(%rdi,%rdx,4), %rcx   - loads the value (4 + rdi + 4*rdx) into rcx. This essentially initializes the value of i for the loop
 movl $0, %edx		    - store the value 0 in the register edx, which will be modified within the loop.
 .L3:
-addl (%rax), %edx
-addq $4, %rax
-cmpq %rcx, %rax
-jne .L3
+addl (%rax), %edx	    - the value of the address pointed to by rax is added to edx
+addq $4, %rax		    - add 4 to the value of rax
+cmpq %rcx, %rax		    - compare the values of rcx(
+jne .L3			    - if less than rax < rcx then go through the loop again.
 .L1:
 movl %edx, %eax	            - move the value in edx which stores the result into eax which is the return register
 ret		            - return the value stored in eax
