@@ -16,18 +16,29 @@ int testFunction(int* input, int length) {
 
 ASSEMBLY CODE WITH O1 OPTIMIZATION LEVEL:
 
+rdi - address , esi - lenmgth
+
+address
+rax = address
+edx = (len - 1)
+
+
+
+
+
+
 testFunction:
 testl %esi, %esi            - checks the length value passed in the esi register
 jle .L4                     -  if this val <= 0 then jump to label 4 since loop doesn't have to be entered
-movq %rdi, %rax	            -  move the parameter "input" that was originally in rdi to rax
+movq %rdi, %rax	            -  move the parameter "input" that was originally in rdi to rax acts as pointer to array
 leal -1(%rsi), %edx         -  assigns the value of rsi - 1(last index loop hits) to the edx register.
-leaq 4(%rdi,%rdx,4), %rcx   - loads the value (4 + rdi + 4*rdx) into rcx. This essentially initializes the value of i for the loop
+leaq 4(%rdi,%rdx,4), %rcx   - loads the value (4 + rdi + 4*rdx) into rcx. Moves the first out of bound index into rcx which is compared with rax later to stop the loop.
 movl $0, %edx		    - store the value 0 in the register edx, which will be modified within the loop.
 .L3:
 addl (%rax), %edx	    - the value of the address pointed to by rax is added to edx
 addq $4, %rax		    - add 4 to the value of rax
-cmpq %rcx, %rax		    - compare the values of rcx(
-jne .L3			    - if less than rax < rcx then go through the loop again.
+cmpq %rcx, %rax		    - compare the values of rcx and rax and sets flags dependant on result
+jne .L3			    - if rax != rcx then go through the loop again.
 .L1:
 movl %edx, %eax	            - move the value in edx which stores the result into eax which is the return register
 ret		            - return the value stored in eax
@@ -35,9 +46,17 @@ ret		            - return the value stored in eax
 movl $0, %edx 	 	    - move the value of 0 into the register rdx since the length <= 0.
 jmp .L1			    - Jump to the label L1 unconditionally
 
+
 Write a short paragraph giving the big picture of how this code works :
 
-
+The parameters are passed in rdi and esi, rdi stores the address int* and esi. The first thing that is done is checking if the length stored in esi is 0. If the length
+is 0 then we don't need to initialize the loop, so we can jump to L4. L4 just sets the edx register to 0 and jumps to L1, essentially setting the return value to 0 since at L1
+the value in edx is moved to rax and then that is returned, so basically if len is 0 we immediatly go to return 0. If the length is not 0, we set up the loop. The starting addr of 
+the array initally stored in rdi is moved to rax and that tracks the address as it moves through the array. Then the two lea instructions first get the value of len - 1 which is the last
+index of the array. Then it gets the address of the first out of boundds access of the array by computing (4 + rdi + 4*rdx) and storing it in %rcx. rax will be compared to rcx in the future 
+to determine when to stop the loop. 0 is then moved to  edx and will be added to during the loop. Then the code enters L3, where the value stored at rax which is the array location we are tracking
+is added to edx, this is essentially the same as the line "sum += input[i]". Then the address is incremented by the size of one int which is 4 so rax + 4. Finally, the loop compares rcx and rax, if
+rax has reached the first out of bounds index, then the lopp terminates, and moves edx to rax and returns. If not equal then go through the loop again by jumping to L3.
 
 
 
