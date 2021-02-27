@@ -97,12 +97,12 @@ testFunction:
         cmpl    $3, %eax    		- checks if loop unrolling is necessary since 4 operations per loop
         jbe     .L8	      		- jumps here if loop unrolling is possible length > 3
         movl    %esi, %edx 		- moves length var from esi to edx
-        movq    %rdi, %rax         		-   moves address of the array from rdi to rax
+        movq    %rdi, %rax         		-  moves address of the array from rdi to rax
         pxor    %xmm0, %xmm0 		- zeroes out the floating point register xmm0
         shrl    $2, %edx                		- divides the length by 4 to optimize the  (4 + rdi + 4*rdx) the statement
         salq    $4, %rdx			- multiplies rdx by 16 to optimize the  (4 + rdi + 4*rdx) statement from O1
         addq    %rdi, %rdx		- adds the address from rdi to rdx and make rdx the first out of bounds addres i the array
-.L4: looping case
+.L4: 				- looping case
         movdqu  (%rax), %xmm2    	- move the value stored in the address at arax into xmm2 which is a floating point register, need to use movdqu to take care of unaligned exception
         addq    $16, %rax	     	- add 16(4 ints in bytes) to rax, essentially incrementing the index
         paddd   %xmm2, %xmm0   	- performing a packed doubleword addition to pad xmm0 and allows for aligned move instruction in future.
@@ -119,7 +119,7 @@ testFunction:
         movd    %xmm0, %eax      	- moves the 32 bits of xmm0 into eax, store return val
         testb   $3, %sil                    	- test to see if there are any remainder elements, look at the lower 8 bits of ESI, basically checks if len% 3 == 0
         je      .L11
-.L3: - final remainder elements 
+.L3: 				- final remainder elements 
         movslq  %edx, %rcx           	- moves the remaining length into rcx register (32 bit to 64 bit move)
         addl    (%rdi,%rcx,4), %eax 	- adds the value stored at the memory location rdi + rcx * 4 into eax
         leal    1(%rdx), %ecx  		-  stores (rdx  + 1) into ecx, incrementing counter of indices visited
@@ -148,3 +148,28 @@ testFunction:
         xorl    %edx, %edx		- zero the edx register
         xorl    %eax, %eax		- zero the eax register
         jmp     .L3			- jump to L3 <= 4 elements in the array jump to remainder elements.
+
+
+Write a short paragraph giving the big picture of how this code works :
+
+
+The parameters are passed in rdi and esi, rdi stores the address (which is an int pointer for the array) and esi, which is the length of the array. This assembly code attempts to unroll the loop into 4 operation per loop instead of one. 
+However, the issue is when the length is not a multiple of 4 you can't unroll the whole loop since at least operations are needed per loop. So instead the assembly code has a code block(L4) which is responsible for the first 4*(x) elements
+when x = length/4 in integer division. For instance, if the length of the array is 14 then the first 4 * 3  = 12 elements are processed by L4 and the remaining 2 elements are processed by L3. To go more in depth, L4 uses vector registers
+xmm0, xmm1, xmm2 which are 128 bit registers and L4 uses xmm0 to store 4 integers at the same time. Since xmm0 is storing 4 integers at the same time, and is storing the running sum, so at any point in time, xmm0 is storing arr[x], arr[x+4]
+, arr[x+8], arr[x+12]. That is the reason %rax is being incremented by 16 since each loop in L4 processes 4 integers. The rest of L4 is essentially adding together the 4 integers stored in xmm0 and stores that value in eax. The label L3 is 
+used to add up the last remainder elements of the array. There is a check after every index, since you could run out of elements at any point since it is the last x elements of the array.   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
