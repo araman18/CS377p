@@ -153,16 +153,21 @@ testFunction:
 Write a short paragraph giving the big picture of how this code works :
 
 
-The parameters are passed in rdi and esi, rdi stores the address (which is an int pointer for the array) and esi, which is the length of the array. This assembly code attempts to unroll the loop into 4 operation per loop instead of one. 
-However, the issue is when the length is not a multiple of 4 you can't unroll the whole loop since at least operations are needed per loop. So instead the assembly code has a code block(L4) which is responsible for the first 4*(x) elements
-when x = length/4 in integer division. For instance, if the length of the array is 14 then the first 4 * 3  = 12 elements are processed by L4 and the remaining 2 elements are processed by L3. To go more in depth, L4 uses vector registers
-xmm0, xmm1, xmm2 which are 128 bit registers and L4 uses xmm0 to store 4 integers at the same time. Since xmm0 is storing 4 integers at the same time, and is storing the running sum, so at any point in time, xmm0 is storing arr[x], arr[x+4]
-, arr[x+8], arr[x+12]. That is the reason %rax is being incremented by 16 since each loop in L4 processes 4 integers. The rest of L4 is essentially adding together the 4 integers stored in xmm0 and stores that value in eax. The label L3 is 
+The parameters are passed in rdi and esi, rdi stores the address (which is an int pointer for the array) and esi, which is the length of the array. This assembly code unrolls the loop into 4 operation per loop instead of one. 
+However, the issue is when the length is not a multiple of 4 you can't unroll the whole loop since at least 4 operations are needed per loop. So instead the assembly code has a code block(L4) which is responsible for the first 4*(x) elements
+when x = length/4 in integer division. For instance, if the length of the array is 14 then the first 4 * 3  = 12 elements are processed by L4 and the remaining 2 elements are processed by L3. In the first block of code there is a check to see 
+if the length is 0 like in the O1 version of the assembly code, and if it is 0 we instantly jump to L7, then set eax to 0 and return , since nothing needs to accumulated. This code also calculates the last in bounds index and sets the value to eax,
+and then the code checks to see if the length is <= 4 in which case it jumps to L3 which is responsible for processing remainder elements. If not it continues to setup for L4. As a part of setting up for L4 the xmm0 register is zeroed with 
+xor since the L4 block accumulates it the starting addres is also moved to rax and then the operations in L4 and L3 occur. To go more in depth, L4 uses vector registers xmm0, xmm1, xmm2 which are 128 bit registers and L4 uses xmm0 
+to store 4 integers at the same time. Since xmm0 is storing 4 integers at the same time, and is storing the running sum, so at any point in time, xmm0 is storing arr[x], arr[x+4] ,arr[x+8], arr[x+12]. 
+That is the reason %rax is being incremented by 16 since each loop in L4 processes 4 integers. The rest of L4 is essentially adding together the 4 integers stored in xmm0 and stores that value in eax. The label L3 is 
 used to add up the last remainder elements of the array. There is a check after every index, since you could run out of elements at any point since it is the last x elements of the array.   
 
 
 
 
+
+Optimizations used in O3 that are not used in O1:
 
 
 
