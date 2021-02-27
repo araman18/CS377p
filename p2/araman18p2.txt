@@ -61,67 +61,90 @@ rax has reached the first out of bounds index, then the lopp terminates, and mov
 
 
 
+paddd - xmm register is 128 bit and the register has to be in 32 bit register, so first shift first 64 bit and add together
+xmm register - setup play with the alignment and process the 128 bit into 32 bit register
+movdqu not aligned vs unaligned
 
+
+4 times 
+
+7 elements
+
+3
+
+
+15 elements
+
+12 
+
+3 elements
+011
+1001 = 9
+1011
+
+0011 & 1001 = 0001
+0011 & 1011 = 0011
+0011 & 1100 =
 
 ASSEMBLY CODE WITH O3 OPTIMIZATION LEVEL:
 
 rdi - address , esi - length
 
 testFunction:
-        testl   %esi, %esi  - checks the length value passed in the esi register
-        jle     .L7               	- jump to label 7 if len is 0
-        leal    -1(%rsi), %eax 	- sets eax equal to length - 1
-        cmpl    $3, %eax    	- checks if loop unrolling is necessary since 4 operations per loop
-        jbe     .L8	      	- jumps here if loop unrolling is possible length > 3
-        movl    %esi, %edx 	- moves length var from esi to edx
-        movq    %rdi, %rax         -   moves address of the array from rdi to rax
-        pxor    %xmm0, %xmm0 - zeroes out the floating point register xmm0
-        shrl    $2, %edx                - divides the length by 4 to optimize the  (4 + rdi + 4*rdx) the statement
-        salq    $4, %rdx	- multiplies rdx by 16 to optimize the  (4 + rdi + 4*rdx) statement from O1
-        addq    %rdi, %rdx	- adds the address from rdi to rdx and make rdx the first out of bounds addres i the array
-.L4:
-        movdqu  (%rax), %xmm2   - move the value stored in the address at arax into xmm2 which is a floating point register, need to use movdqu to take care of unaligned exception
-        addq    $16, %rax	     -  add 16(4 ints in bytes) to rax, essentially incrementing the index
-        paddd   %xmm2, %xmm0   - performing a packed doubleword addition to xmm0 by the value of xmm2.
-        cmpq    %rdx, %rax	    - check if rax is at the first out of bounds index.
-        jne     .L4                        
-        movdqa  %xmm0, %xmm1
-        movl    %esi, %edx
-        psrldq  $8, %xmm1
-        andl    $-4, %edx
-        paddd   %xmm1, %xmm0
-        movdqa  %xmm0, %xmm1
-        psrldq  $4, %xmm1
-        paddd   %xmm1, %xmm0
-        movd    %xmm0, %eax
-        testb   $3, %sil
+        testl   %esi, %esi  		- checks the length value passed in the esi register
+        jle     .L7               		- jump to label 7 if len is 0
+        leal    -1(%rsi), %eax 		- sets eax equal to length - 1
+        cmpl    $3, %eax    		- checks if loop unrolling is necessary since 4 operations per loop
+        jbe     .L8	      		- jumps here if loop unrolling is possible length > 3
+        movl    %esi, %edx 		- moves length var from esi to edx
+        movq    %rdi, %rax         		-   moves address of the array from rdi to rax
+        pxor    %xmm0, %xmm0 		- zeroes out the floating point register xmm0
+        shrl    $2, %edx                		- divides the length by 4 to optimize the  (4 + rdi + 4*rdx) the statement
+        salq    $4, %rdx			- multiplies rdx by 16 to optimize the  (4 + rdi + 4*rdx) statement from O1
+        addq    %rdi, %rdx		- adds the address from rdi to rdx and make rdx the first out of bounds addres i the array
+.L4: looping case
+        movdqu  (%rax), %xmm2    	- move the value stored in the address at arax into xmm2 which is a floating point register, need to use movdqu to take care of unaligned exception
+        addq    $16, %rax	     	- add 16(4 ints in bytes) to rax, essentially incrementing the index
+        paddd   %xmm2, %xmm0   	- performing a packed doubleword addition to pad xmm0 and allows for aligned move instruction in future.
+        cmpq    %rdx, %rax	     	- check if rax is at the first out of bounds index.
+        jne     .L4                               	- go back to the beginning of the loop if not out of bounds. 
+        movdqa  %xmm0, %xmm1 	- aligned move from xmm0 to xmm1 and this is faster than an unaligned move.
+        movl    %esi, %edx	     	- moves length variable into edx
+        psrldq  $8, %xmm1             	- right logical shift of xmm1 by 8 spaces, and pads the left with 0's.
+        andl    $-4, %edx        	   	- Divisibility test to see if edx(length) is divisible by 4
+        paddd   %xmm1, %xmm0  	- Add the value of xxm1 to xmm0 and padd the value to allow for aligned move.
+        movdqa  %xmm0, %xmm1 	- move the aligned sum into xmm0
+        psrldq  $4, %xmm1              	- right logical shift of xmm1 by 4 spaces and 
+        paddd   %xmm1, %xmm0   	- another vector add into xmm0, this should be a 32 bit integer by now
+        movd    %xmm0, %eax      	- moves the 32 bits of xmm0 into eax, store return val
+        testb   $3, %sil                    	- test to see if there are any remainder elements, look at the lower 8 bits of ESI, basically checks if len% 3 == 0
         je      .L11
-.L3:
-        movslq  %edx, %rcx
-        addl    (%rdi,%rcx,4), %eax
-        leal    1(%rdx), %ecx
-        cmpl    %ecx, %esi
-        jle     .L1
-        movslq  %ecx, %rcx
-        addl    (%rdi,%rcx,4), %eax
-        leal    2(%rdx), %ecx
-        cmpl    %ecx, %esi
-        jle     .L1
-        movslq  %ecx, %rcx
-        addl    $3, %edx
-        addl    (%rdi,%rcx,4), %eax
-        cmpl    %edx, %esi
-        jle     .L1
-        movslq  %edx, %rdx
-        addl    (%rdi,%rdx,4), %eax
-        ret
+.L3: - final remainder elements 
+        movslq  %edx, %rcx           	- moves the remaining length into rcx register (32 bit to 64 bit move)
+        addl    (%rdi,%rcx,4), %eax 	- adds the value stored at the memory location rdi + rcx * 4 into eax
+        leal    1(%rdx), %ecx  		-  stores (rdx  + 1) into ecx, incrementing counter of indices visited
+        cmpl    %ecx, %esi  		- checks if all the elements have been processed
+        jle     .L1                      		- return if finished processing the array
+        movslq  %ecx, %rcx   		-moves the remaining length into rcx register (32 bit to 64 bit move) set by last code block
+        addl    (%rdi,%rcx,4), %eax 	-  adds the value stored at the memory location (rdi + rcx * 4) into eax
+        leal    2(%rdx), %ecx  		- increments ecx by 2 since this loop processes the second remainder element
+        cmpl    %ecx, %esi 		- checks if the elements have been processed
+        jle     .L1	     		- return if all elements have been processed
+        movslq  %ecx, %rcx   		- moves the remaining length into rcx register (32 bit to 64 bit move) set by last code block
+        addl    $3, %edx        		- adds 3 to length of edx since this is the third remainder element
+        addl    (%rdi,%rcx,4), %eax 	- accumulates the value of eax by adding the value at the location rdi + rcx*4
+        cmpl    %edx, %esi   		- check if all the elements have been processed
+        jle     .L1  	        		- if finished processing, jump to return
+        movslq  %edx, %rdx 		- moves the lower 32 bits of edx into the same register rdx but instead uses the 64 bits
+        addl    (%rdi,%rdx,4), %eax 	- accumulate the sum in eax by adding (rdx * 4 + rdi) to the value of eax.
+        ret 				- if it gets here all elements must be done processing, so return
 .L7:
-        xorl    %eax, %eax - sets eax to 0 since length is 0, so the return value is 0
+        xorl    %eax, %eax 		- sets eax to 0 since length is 0, so the return value is 0
 .L1:
-        ret 		     - returns value of eax	      - 
+        ret 		    		- returns value of eax	      - 
 .L11:
-        ret
+        ret				- returns value of eax
 .L8:
-        xorl    %edx, %edx
-        xorl    %eax, %eax
-        jmp     .L3
+        xorl    %edx, %edx		- zero the edx register
+        xorl    %eax, %eax		- zero the eax register
+        jmp     .L3			- jump to L3 <= 4 elements in the array jump to remainder elements.
