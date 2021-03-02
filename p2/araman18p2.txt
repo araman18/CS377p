@@ -21,11 +21,9 @@ rdi - address , esi - length
 address
 rax = address
 edx = (len - 1)
-
-
-
-
-
+Abhijit Krishna Raman
+akr2495
+Dr. Pingali
 
 testFunction:
 testl %esi, %esi            - checks the length value passed in the esi register
@@ -66,25 +64,6 @@ xmm register - setup play with the alignment and process the 128 bit into 32 bit
 movdqu not aligned vs unaligned
 
 
-4 times 
-
-7 elements
-
-3
-
-
-15 elements
-
-12 
-
-3 elements
-011
-1001 = 9
-1011
-
-0011 & 1001 = 0001
-0011 & 1011 = 0011
-0011 & 1100 =
 
 ASSEMBLY CODE WITH O3 OPTIMIZATION LEVEL:
 
@@ -95,17 +74,17 @@ testFunction:
         jle     .L7               		- jump to label 7 if len is 0
         leal    -1(%rsi), %eax 		- sets eax equal to length - 1
         cmpl    $3, %eax    		- checks if loop unrolling is necessary since 4 operations per loop
-        jbe     .L8	      		- jumps here if loop unrolling is possible length > 3
+        jbe     .L8	      		- jumps here if loop unrolling is not possible length <= 4
         movl    %esi, %edx 		- moves length var from esi to edx
         movq    %rdi, %rax         		-  moves address of the array from rdi to rax
-        pxor    %xmm0, %xmm0 		- zeroes out the floating point register xmm0
-        shrl    $2, %edx                		- divides the length by 4 to optimize the  (4 + rdi + 4*rdx) the statement
-        salq    $4, %rdx			- multiplies rdx by 16 to optimize the  (4 + rdi + 4*rdx) statement from O1
-        addq    %rdi, %rdx		- adds the address from rdi to rdx and make rdx the first out of bounds addres i the array
+        pxor    %xmm0, %xmm0 	- zeroes out the vector register xmm0
+        shrl    $2, %edx                	- divides the length by 4 to optimize the  (4 + rdi + 4*rdx) the statement
+        salq    $4, %rdx		- multiplies rdx by 16 to optimize the  (4 + rdi + 4*rdx) statement from O1 these two statements basically multiply rdx by 4
+        addq    %rdi, %rdx		- adds the address from rdi to rdx and make rdx the first out of bounds address i the array that is still a multiple of 4
 .L4: 				- looping case
-        movdqu  (%rax), %xmm2    	- move the value stored in the address at arax into xmm2 which is a floating point register, need to use movdqu to take care of unaligned exception
-        addq    $16, %rax	     	- add 16(4 ints in bytes) to rax, essentially incrementing the index
-        paddd   %xmm2, %xmm0   	- performing a packed doubleword addition to pad xmm0 and allows for aligned move instruction in future.
+        movdqu  (%rax), %xmm2    	- move the value stored in the address at arax into xmm2 which is a vector register, need to use movdqu to take care of unaligned exception
+        addq    $16, %rax	     	- add 16(4 ints in bytes) to rax, essentially incrementing by 4 spots since padd will allow adding 4 integers to xmm0
+        paddd   %xmm2, %xmm0   	- performing a packed doubleword addition to add 4 integers to their respective spots in xmm0
         cmpq    %rdx, %rax	     	- check if rax is at the first out of bounds index.
         jne     .L4                               	- go back to the beginning of the loop if not out of bounds. 
         movdqa  %xmm0, %xmm1 	- aligned move from xmm0 to xmm1 and this is faster than an unaligned move.
@@ -125,7 +104,7 @@ testFunction:
         leal    1(%rdx), %ecx  		-  stores (rdx  + 1) into ecx, incrementing counter of indices visited
         cmpl    %ecx, %esi  		- checks if all the elements have been processed
         jle     .L1                      		- return if finished processing the array
-        movslq  %ecx, %rcx   		-moves the remaining length into rcx register (32 bit to 64 bit move) set by last code block
+        movslq  %ecx, %rcx   		- moves the value in a 32 bit register to the 64 bit register and sign extends it.
         addl    (%rdi,%rcx,4), %eax 	-  adds the value stored at the memory location (rdi + rcx * 4) into eax
         leal    2(%rdx), %ecx  		- increments ecx by 2 since this loop processes the second remainder element
         cmpl    %ecx, %esi 		- checks if the elements have been processed
@@ -168,6 +147,18 @@ used to add up the last remainder elements of the array. There is a check after 
 
 
 Optimizations used in O3 that are not used in O1:
+- The most apparent optimization that is used in O3 that is not used in O1 is the loop unrolling. In O3 the loop is unrolled into 4 operations per loop, and there are now 2 label blocks that make up the loop instead of one, this loop unrolling
+is accomplished by having one label block deal with the first 4 * x elements of the array where x is the highest multiple of 4 < array length and the remaider elemetns being dealt with by L3. This optimization gets rid of 3/4 of the conditional branches
+in the program and the program time decreases at the expense of the size, loop unrolling also reduces the overhead of executing the code that sets up the loop by a large portion.
+
+- Vector registers to accumulate a sum. Since the code is being loop unrolled, that means that 4 elements are being added for each loop iteration, the way the compiler optimizes the 4 add operations per loop is by using 
+1 paddd operation with a vector register to simulate the same thing where the vector register xmm0 is able to store 4 integers at the same time and each iteration adds to each of those integers. At the end of the loop contained in L4, 
+the rest of L4 is responsible for adding the 4 integers in xmm0 together and store that in eax. This takes times, but for larger values of array length, the time saved by using 1 operation per loop outweights the fixed time it takes to 
+assemble xmm0 into eax.
+
+- A small optimization that does occur is in the instruction "testb $3, %sil" where only the 8 least significant bits of rsi are accessed in order to tell if the number is perfectly divisible by 4 instead of accessing the entire rsi register.
+
+- 
 
 
 
