@@ -16,6 +16,8 @@ int testFunction(int* input, int length) {
 
 ASSEMBLY CODE WITH O1 OPTIMIZATION LEVEL:
 
+
+Question 3:
 rdi - address , esi - length
 
 address
@@ -58,13 +60,7 @@ rax has reached the first out of bounds index, then the lopp terminates, and mov
 
 
 
-
-paddd - xmm register is 128 bit and the register has to be in 32 bit register, so first shift first 64 bit and add together
-xmm register - setup play with the alignment and process the 128 bit into 32 bit register
-movdqu not aligned vs unaligned
-
-
-
+Question 4:
 ASSEMBLY CODE WITH O3 OPTIMIZATION LEVEL:
 
 rdi - address , esi - length
@@ -129,6 +125,7 @@ testFunction:
         jmp     .L3			- jump to L3 <= 4 elements in the array jump to remainder elements.
 
 
+
 Write a short paragraph giving the big picture of how this code works :
 
 
@@ -145,21 +142,23 @@ used to add up the last remainder elements of the array. There is a check after 
 
 
 
-
+Question 5:
 Optimizations used in O3 that are not used in O1:
+
 - The most apparent optimization that is used in O3 that is not used in O1 is the loop unrolling. In O3 the loop is unrolled into 4 operations per loop, and there are now 2 label blocks that make up the loop instead of one, this loop unrolling
 is accomplished by having one label block deal with the first 4 * x elements of the array where x is the highest multiple of 4 < array length and the remaider elemetns being dealt with by L3. This optimization gets rid of 3/4 of the conditional branches
 in the program and the program time decreases at the expense of the size, loop unrolling also reduces the overhead of executing the code that sets up the loop by a large portion.
 
-- Vector registers to accumulate a sum. Since the code is being loop unrolled, that means that 4 elements are being added for each loop iteration, the way the compiler optimizes the 4 add operations per loop is by using 
+- Vector registers to accumulate a sum(vectorization). Since the code is being loop unrolled, that means that 4 elements are being added for each loop iteration, the way the compiler optimizes the 4 add operations per loop is by using 
 1 paddd operation with a vector register to simulate the same thing where the vector register xmm0 is able to store 4 integers at the same time and each iteration adds to each of those integers. At the end of the loop contained in L4, 
 the rest of L4 is responsible for adding the 4 integers in xmm0 together and store that in eax. This takes times, but for larger values of array length, the time saved by using 1 operation per loop outweights the fixed time it takes to 
 assemble xmm0 into eax.
 
 - A small optimization that does occur is in the instruction "testb $3, %sil" where only the 8 least significant bits of rsi are accessed in order to tell if the number is perfectly divisible by 4 instead of accessing the entire rsi register.
 
-- 
+- Instead of multiplying with leaq to get the value of (4*rcx + rdi) the O3 version of the code uses the set of instructions "shrl    $2, %edx"  and "salq    $4, %rdx". These instructions are shifts and thus much faster than mult instructions, another small optimization.
 
+- Another optimization is that instead of using the mov instruction to set registers to 0, the register is xor'd with itself which automatically sets it to 0 and is faster than the mov instruction.
 
 
 
