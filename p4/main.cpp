@@ -24,7 +24,9 @@ vector<vector<int>> make_csr(char *file_name) {
 	getline(file, line);
 
 	vector<string> lineSplit;
+  boost::split(lineSplit, line, boost::is_any_of(" "));
 
+	int numNodes = stoi(lineSplit[2]);
 
 	map<int,unordered_map<int,int>> cooRepresentation;
 
@@ -41,18 +43,20 @@ vector<vector<int>> make_csr(char *file_name) {
 			}
 	}
 
-	vector<vector<int>> csr(3, vector<int>(0));
-	csr[2].push_back(1);
+	vector<vector<int>> csr(2, vector<int>(0));
+	csr.push_back(vector<int>(numNodes + 1, 0));
 
-	for(auto &it: cooRepresentation) {
-		int row = it.first;
-		int size = it.second.size();
-		csr[2].push_back(csr[2].back() + size);
-
-		unordered_map<int,int> colWeightMap = it.second;
-		for(auto cols: colWeightMap) {
-			csr[0].push_back(cols.second);
-			csr[1].push_back(cols.first);
+	for(int rowIndex = 1; rowIndex <= numNodes; ++rowIndex) {
+		if(!cooRepresentation.count(rowIndex)) {
+			csr[2][rowIndex] = csr[2][rowIndex - 1];
+		}else{
+			unordered_map<int,int> outgoingEdges = cooRepresentation[rowIndex];
+			int size = outgoingEdges.size();
+			for(auto &it: outgoingEdges) {
+				csr[0].push_back(it.second);
+				csr[1].push_back(it.first);
+			}
+			csr[2][rowIndex] = csr[2][rowIndex  - 1] + size;
 		}
 	}
 
