@@ -70,11 +70,26 @@ vector<vector<int>> DimacsToCsr(char *file_name) {
 
 void CsrToDimacs(vector<vector<int>> &csr, char *desired_file_name) {
 	ofstream dimacs_file;
-	//dimacs_file.open(file_name);
+	dimacs_file.open(desired_file_name);
 
 	int num_nodes = csr[2].size() - 1;
 	int num_edges = csr[0].size();
-	printf("Number of non duplicate edges %d\n", num_edges);
 
 
+  string problem_line = "p sp " + to_string(num_nodes) + " " + to_string(num_edges) + "\n";
+  dimacs_file << problem_line;
+
+  int edge_index = 0;
+  for(int row_index = 1; row_index <= num_nodes; ++row_index) {
+    int num_outgoing_edges = csr[2][row_index] - csr[2][row_index - 1];
+    int end_edge_index = edge_index + num_outgoing_edges;
+
+    for( ; edge_index < end_edge_index; ++edge_index) {
+      string edge_line = "a " + to_string(row_index) + " " + to_string(csr[1][edge_index]) + " " + to_string(csr[0][edge_index]) + "\n";
+      dimacs_file << edge_line;
+    }
+
+  }
+
+  dimacs_file.close();
 }
