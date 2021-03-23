@@ -93,3 +93,23 @@ void CsrToDimacs(vector<vector<int>> &csr, char *desired_file_name) {
 
   dimacs_file.close();
 }
+
+void WriteNodeLabels(vector<vector<int>> &csr, char *desired_file_name) {
+	ofstream label_file;
+	label_file.open(desired_file_name);
+
+	int num_nodes = csr[2].size() - 1;
+	int num_edges = csr[0].size();
+
+	int edge_index = 0;
+  for(int row_index = 1; row_index <= num_nodes; ++row_index) {
+    int num_outgoing_edges = csr[2][row_index] - csr[2][row_index - 1];
+    int end_edge_index = edge_index + num_outgoing_edges;
+
+    for( ; edge_index < end_edge_index; ++edge_index) {
+      string edge_line = to_string(row_index) + " " + to_string(csr[1][edge_index]) + " " + to_string(csr[0][edge_index]) + "\n";
+      label_file << edge_line;
+    }
+
+  }
+}

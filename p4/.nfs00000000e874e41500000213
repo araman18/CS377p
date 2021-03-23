@@ -1,0 +1,7 @@
+class Csr
+{
+public:
+  vector<int> row_indices;
+  vector<int> col_indices;
+  vector<int> 
+};
