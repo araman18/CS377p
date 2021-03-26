@@ -21,7 +21,7 @@ using namespace std;
 16 15
 17 16
 
-
+[.033, .385, .344, .039, .08, .039, .016, .016, .016, .016, .016] are the probable desired values
 */
 
 
