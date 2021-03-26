@@ -4,7 +4,6 @@
 
 using namespace std;
 
-
 void PrintCSR(vector<vector<int>> &csr) {
 	for(auto &v: csr){
 		cout << "[";
@@ -63,7 +62,7 @@ vector<vector<int>> DimacsToCsr(char *file_name) {
 		}
 	}
 
-	//PrintCSR(csr);
+	PrintCSR(csr);
 
 	return csr;
 }
