@@ -3,6 +3,27 @@
 
 using namespace std;
 
+/*
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+[3, 2, 2, 1, 6, 2, 4, 5, 2, 5, 2, 5, 2, 5, 2, 5, 5]
+[0, 0, 1, 2, 4, 7, 9, 11, 13, 15, 16, 17]
+
+
+0 0
+1 0
+2 1
+4 2
+7 4
+9 7
+11 9
+13 11
+15 13
+16 15
+17 16
+
+
+*/
+
 
 void print_vector(vector<double> &v) {
   cout << "[" ;
@@ -42,20 +63,16 @@ vector<double> pagerank(vector<vector<int>> &csr) {
     }
 
     for(int index = 1; index < n; ++index) {
-      double new_val = (0.15/(n-1.0)) + (0.85 * curr_edges[index]);
+      double new_val = (0.15/(n-1)) + (0.85 * curr_edges[index]);
+
       double change = abs(prev_edges[index] - new_val);
       max_change = max(max_change, change);
-
       prev_edges[index] = new_val;
-
     }
     converge = max_change < change_threshold;
+    print_vector(curr_edges);
     fill(curr_edges.begin(), curr_edges.end(), 0);
   }
 
-  double sum = accumulate(prev_edges.begin() + 1, prev_edges.end(), 0.0);
-  for_each(prev_edges.begin() + 1, prev_edges.end(), [&sum](double &n){n /= sum;});
-
-  print_vector(prev_edges);
-  return prev_edges;
+  return curr_edges;
 }
