@@ -63,16 +63,22 @@ vector<double> pagerank(vector<vector<int>> &csr) {
     }
 
     for(int index = 1; index < n; ++index) {
-      double new_val = (0.15/(n-1)) + (0.85 * curr_edges[index]);
-
+      double new_val = (0.15/(n-1.0)) + (0.85 * curr_edges[index]);
       double change = abs(prev_edges[index] - new_val);
       max_change = max(max_change, change);
       prev_edges[index] = new_val;
     }
     converge = max_change < change_threshold;
-    print_vector(curr_edges);
     fill(curr_edges.begin(), curr_edges.end(), 0);
   }
-
-  return curr_edges;
+  double sum = 0;
+  for(int index = 1; index < n; ++index) {
+	sum += prev_edges[index];
+  }
+  
+  for(int index = 1; index < n; ++index) {
+	prev_edges[index] = prev_edges[index] / sum;
+  }
+  print_vector(prev_edges);
+  return prev_edges;
 }
