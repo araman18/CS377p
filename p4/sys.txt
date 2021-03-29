@@ -1,0 +1,24 @@
+page_rank(1) = .15/N + .85*(page_rank(4)/2)
+page_rank(2) = .15/N + .85(page_rank(3) + page_rank(4)/2 + page_rank(5)/3 + page_rank(6)/2 + page_rank(7)/2 + page_rank(8)/2 + page_rank(9)/2)
+page_rank(3) = .15/N + .85(page_rank(2))
+page_rank(4) = .15/N + .85(page_rank(5)/3)
+page_rank(5) = .15/N + .85(page_rank(6)/2 + page_rank(7)/2 + page_rank(8)/2 + page_rank(9)/2 + page_rank(10) + page_rank(11))
+page_rank(6) = .15/N + .85(page_rank(5)/3)
+page_rank(7) = .15/N + .85(0)
+page_rank(8) = .15/N + .85(0)
+page_rank(9) = .15/N + .85(0)
+page_rank(10) = .15/N + .85(0)
+page_rank(11) = .15/N + .85(0)
+
+Solutions:
+page_rank(1) = 0.0328
+page_rank(2) = 0.3844
+page_rank(3) = 0.3429
+page_rank(4) = 0.0391
+page_rank(5) = 0.0809
+page_rank(6) = 0.0391
+page_rank(7) = 0.0162
+page_rank(8) = 0.0162
+page_rank(9) = 0.0162
+page_rank(10) = 0.0162
+page_rank(11) = 0.0162
