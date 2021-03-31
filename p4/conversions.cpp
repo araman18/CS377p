@@ -14,7 +14,7 @@ void PrintCSR(vector<vector<int>> &csr) {
 	}
 }
 
-vector<vector<int>> DimacsToCsr(char *file_name) {
+vector<vector<int>> DimacsToCsr(const char *file_name) {
 	ifstream file(file_name);
 
 	string line;
@@ -41,8 +41,6 @@ vector<vector<int>> DimacsToCsr(char *file_name) {
 			}
 	}
 
-	printf("Number of duplicate edges: %d\n", num_duplicates);
-
 	vector<vector<int>> csr(2, vector<int>(0));
 	csr.push_back(vector<int>(num_nodes + 1, 0));
 
@@ -62,12 +60,10 @@ vector<vector<int>> DimacsToCsr(char *file_name) {
 		}
 	}
 
-	PrintCSR(csr);
-
 	return csr;
 }
 
-void CsrToDimacs(vector<vector<int>> &csr, char *desired_file_name) {
+void CsrToDimacs(vector<vector<int>> &csr, const char *desired_file_name) {
 	ofstream dimacs_file;
 	dimacs_file.open(desired_file_name);
 
@@ -93,10 +89,23 @@ void CsrToDimacs(vector<vector<int>> &csr, char *desired_file_name) {
   dimacs_file.close();
 }
 
-void WriteNodeLabels(vector<vector<int>> &csr, char *desired_file_name) {
+void writeLables(vector<double> &pageranks, const char *desired_file_name) {
 	ofstream label_file;
 	label_file.open(desired_file_name);
+	int n = pageranks.size();
 
+	for(int node_num = 1; node_num < n; ++node_num) {
+			string to_write = to_string(node_num) + " " + to_string(pageranks[node_num]) + "\n";
+			label_file << to_write;
+	}
+
+	label_file.close();
+}
+
+void histogramLabels(vector<vector<int>> &csr, const char *desired_file_name) {
+	ofstream label_file;
+	label_file.open(desired_file_name);
+	
 	int num_nodes = csr[2].size() - 1;
 	int num_edges = csr[0].size();
 	int edge_index = 0;

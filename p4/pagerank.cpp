@@ -18,7 +18,7 @@ vector<double> pagerank(vector<vector<int>> &csr) {
 
   int n = starting_edge_diffs.size();
   double uniform = 1.0 / (n - 1);
-  printf("Starting uniform edge weight is %f for %d\n", uniform, n - 1);
+  //printf("Starting uniform edge weight is %f for %d\n", uniform, n - 1);
 
   vector<double> prev_edges(n, uniform);
   vector<double> curr_edges(n, 0);
@@ -56,6 +56,5 @@ vector<double> pagerank(vector<vector<int>> &csr) {
   double sum = accumulate(prev_edges.begin() + 1, prev_edges.end(), 0.0);
   for_each(prev_edges.begin() + 1, prev_edges.end(), [&sum](double &n){n /= sum;});
 
-  print_vector(prev_edges);
   return prev_edges;
 }
