@@ -6,78 +6,68 @@
 #include <time.h>    /* for clock_gettime */
 #include <atomic>    /*used in other parts of the assignment */
 
-#define NUM_THREADS 8
+#define MAX_THREADS 512
 
-int threadArg[NUM_THREADS];
-pthread_t handles[NUM_THREADS];
-int start_points[NUM_THREADS];
-
-double part_computation[NUM_THREADS];
-
+int threadArg[MAX_THREADS];
+pthread_t handles[MAX_THREADS];
 double pi = 0.0;
+pthread_mutex_t globalSum_lock;
 
 const int numPoints = 1000000000;
 
-const double step = 0.5/numPoints;
+const double step = 0.5 / numPoints;
 
-const int num_per_thread = numPoints / NUM_THREADS;
+int num_threads;
 
 double f(double x) {
   return (6.0/sqrt(1-x*x));
 }
 
+void *performComputation(void *threadIdPtr) {
+  int threadid = *(int*)threadIdPtr;
+  printf("Thread %d starting\n", threadid);
+  for(int i = threadid; i < numPoints; i+=num_threads) {
+    double val =  step * ((double) i);
+    double to_add = step*f(val);
 
-
-void *performComputation(void *start_location) {
-  int start = *(int*)(start_location);
-  int end = start + num_per_thread;
-  printf("start: %d end: %d\n", start, end);
-  double x_curr = 0.0d + (step * start);
-  double total = 0;
-  for(int count = start; count < end; ++count) {
-    total = total + step * f(x_curr);
-    x_curr = x_curr + step;
+    pthread_mutex_lock(&globalSum_lock);
+    pi += to_add;
+    pthread_mutex_unlock(&globalSum_lock);
   }
-  printf("From starting point %d the total is %.20f\n", start, total);
-  part_computation[start/num_per_thread] = total;
+  printf("Thread %d finished\n", threadid);
 }
 
 
 
 int main(int argc, char *argv[]) {
+  if(argc < 2) {
+    printf("Please enter the number of threads\n");
+    exit(1);
+  } else {
+    num_threads = atoi(argv[1]);
+  }
+
   uint64_t execTime; /*time in nanoseconds */
   struct timespec tick, tock;
 
+  pthread_attr_t attr;
+  pthread_attr_init (&attr);
+
   clock_gettime(CLOCK_MONOTONIC_RAW, &tick);
 
-  // double x = 0.0d;
-  // for (int i = 0; i < numPoints; i++) {
-  //  pi = pi + step*f(x);  // Add to local sum
-  //  x = x + step;  // next x
-  // }
-
-
   int start = 0;
-  for(int t= 0; t < NUM_THREADS; ++t) {
+  for(int t= 0; t < num_threads; ++t) {
     threadArg[t] = t;
-    start_points[t] = start;
-    pthread_create(&handles[t], NULL, performComputation, &start_points[t]);
-    start += num_per_thread;
+    pthread_create(&handles[t],&attr,performComputation,& threadArg[t]);
   }
 
-
-  for(int t = 0; t < NUM_THREADS; ++t) {
+  for(int t = 0; t < num_threads; ++t) {
     pthread_join(handles[t], NULL);
   }
-
 
   clock_gettime(CLOCK_MONOTONIC_RAW, &tock);
 
   execTime = 1000000000 * (tock.tv_sec - tick.tv_sec) + tock.tv_nsec - tick.tv_nsec;
-
-  for(int i = 0; i < NUM_THREADS; ++i) {
-    pi += part_computation[i];
-  }
 
   printf("elapsed process CPU time = %llu nanoseconds\n", (long long unsigned int) execTime);
 
