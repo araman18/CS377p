@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-pthread -std=c++11
-SOURCE=pi.cpp
+SOURCE=arrayCompute.cpp
 EXEC=computePi
 
 : $(EXEC)

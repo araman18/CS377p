@@ -10,7 +10,7 @@
 
 int threadArg[MAX_THREADS];
 pthread_t handles[MAX_THREADS];
-double pi = 0.0;
+std::atomic<double> pi{0.0};
 pthread_mutex_t globalSum_lock;
 
 const int numPoints = 1000000000;
@@ -23,6 +23,11 @@ double f(double x) {
   return (6.0/sqrt(1-x*x));
 }
 
+void add_to_pi(double bar) {
+  auto current = pi.load();
+  while (!pi.compare_exchange_weak(current, current + bar));
+}
+
 void *performComputation(void *threadIdPtr) {
   int threadid = *(int*)threadIdPtr;
   printf("Thread %d starting\n", threadid);
@@ -30,9 +35,7 @@ void *performComputation(void *threadIdPtr) {
     double val =  step * ((double) i);
     double to_add = step*f(val);
 
-    pthread_mutex_lock(&globalSum_lock);
-    pi += to_add;
-    pthread_mutex_unlock(&globalSum_lock);
+    add_to_pi(to_add);
   }
   printf("Thread %d finished\n", threadid);
 }
@@ -71,7 +74,7 @@ int main(int argc, char *argv[]) {
 
   printf("elapsed process CPU time = %llu nanoseconds\n", (long long unsigned int) execTime);
 
-  printf("%.20f\n", pi);
+  printf("%.20f\n", pi.load());
 
   pthread_exit(NULL);
   return 0;
