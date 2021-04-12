@@ -5,6 +5,11 @@
 #include <stdint.h>  /* for uint64  */
 #include <time.h>    /* for clock_gettime */
 #include <atomic>    /*used in other parts of the assignment */
+#include <boost/thread.hpp>
+#include <boost/thread/barrier.hpp>
+#include <boost/bind.hpp>
+#include <boost/atomic.hpp>
+#include <vector>
 
 
 #define MAX_THREADS 512
@@ -12,8 +17,6 @@
 int threadArg[MAX_THREADS];
 pthread_t handles[MAX_THREADS];
 double part[MAX_THREADS];
-
-pthread_barrier_t mybarrier;
 
 const int numPoints = 1000000000;
 
@@ -25,8 +28,10 @@ double f(double x) {
   return (6.0/sqrt(1-x*x));
 }
 
-void *performComputation(void *threadIdPtr) {
-  int threadid = *(int*)threadIdPtr;
+double pi = 0.0f;
+
+void performComputation(boost::barrier& barrier, boost::atomic<int>& current) {
+  int threadid = current.load();
   printf("Thread %d starting\n", threadid);
   double total = 0;
   for(int i = threadid; i < numPoints; i+=num_threads) {
@@ -35,8 +40,8 @@ void *performComputation(void *threadIdPtr) {
     total += to_add;
   }
   part[threadid] = total;
+  barrier.wait();
   printf("Thread %d finished\n", threadid);
-  pthread_barrier_wait(&mybarrier);
 }
 
 
@@ -55,23 +60,23 @@ int main(int argc, char *argv[]) {
   pthread_attr_t attr;
   pthread_attr_init (&attr);
 
-  pthread_barrier_init(&mybarrier, NULL, num_threads + 1);
+  boost::barrier big_bank(num_threads);
 
   clock_gettime(CLOCK_MONOTONIC_RAW, &tick);
 
   int start = 0;
-  for(int t= 0; t < num_threads; ++t) {
-    threadArg[t] = t;
-    pthread_create(&handles[t],&attr,performComputation,& threadArg[t]);
-  }
+  std::vector<boost::thread> thread_vec;
+  //for(int t= 0; t < num_threads; ++t) {
+    threadArg[1] = 1;
+    boost::atomic<int> curr(1);
+    //pthread_create(&handles[t],&attr,performComputation,& threadArg[t]);
+    boost::thread temp_thread(boost::bind(&performComputation, boost::ref(big_bank), boost::ref(curr)));
 
-  pthread_barrier_wait(&mybarrier);
+  //}
 
-  for(int t = 0; t < num_threads; ++t) {
-    pthread_join(handles[t], NULL);
-  }
-
-  pthread_barrier_destroy(&mybarrier);
+  //for(int i = 0; i < num_threads; ++i) {
+    temp_thread.join();
+  //}
 
   clock_gettime(CLOCK_MONOTONIC_RAW, &tock);
 
