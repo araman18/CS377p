@@ -6,8 +6,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <boost/algorithm/string.hpp>
-#include <pthread.h>
-#include <algorithm>
 
 using namespace std;
 
@@ -18,22 +16,6 @@ using namespace std;
 #define NEXT 1
 
 #define MAX_THREADS 16
-
-int numThreads;
-
-int threadArg[MAX_THREADS];
-pthread_t handles[MAX_THREADS];
-
-
-pthread_barrier_t labelSettingBarrier;
-
-pthread_barrier_t convergenceBarrier;
-
-atomic<int> compBarrier(0);
-
-int limit;
-
-int perThread;
 
 class CsrGraph {
 // You shouldn't need to modify this class except for adding essential locks and relavent methods,
@@ -250,27 +232,31 @@ public:
     }
 };
 
+int numThreads;
+
+int threadArg[MAX_THREADS];
+pthread_t handles[MAX_THREADS];
+
 CsrGraph *graph;
+
+int perThread;
+
 double threshold;
 double damping;
 
-void reset_next_label(CsrGraph *g, const double damping, int threadNum) {
+void reset_next_label(CsrGraph *g, const double damping) {
     // Modify this function in any way you want to make pagerank parallel
     int num_nodes = g->node_size();
-    for (int n = threadNum; n <= num_nodes; n += perThread) {
-        pthread_mutex_lock(&graph->nodeLocks[n]);
+    for (int n = 1; n <= num_nodes; n++) {
         g->set_label(n, NEXT, (1.0 - damping) / (double) num_nodes);
-        pthread_mutex_unlock(&graph->nodeLocks[n]);
     }
 }
 
-bool is_converged(CsrGraph *g, const double threshold, int threadNum) {
+bool is_converged(CsrGraph *g, const double threshold) {
     // Modify this function in any way you want to make pagerank parallel
-    for (int n = threadNum; n <= g->node_size(); n+=perThread) {
-        pthread_mutex_lock(&graph->nodeLocks[n]);
+    for (int n = 1; n <= g->node_size(); n++) {
         const double cur_label = g->get_label(n, CURRENT);
         const double next_label = g->get_label(n, NEXT);
-        pthread_mutex_unlock(&graph->nodeLocks[n]);
         if (fabs(next_label - cur_label) > threshold) {
             return false;
         }
@@ -278,12 +264,10 @@ bool is_converged(CsrGraph *g, const double threshold, int threadNum) {
     return true;
 }
 
-void update_current_label(CsrGraph *g, int threadNum) {
+void update_current_label(CsrGraph *g) {
     // Modify this function in any way you want to make pagerank parallel
-    for (int n = threadNum; n <= g->node_size(); n += perThread) {
-        pthread_mutex_lock(&graph->nodeLocks[n]);
+    for (int n = 1; n <= g->node_size(); n++) {
         g->set_label(n, CURRENT, g->get_label(n, NEXT));
-        pthread_mutex_unlock(&graph->nodeLocks[n]);
     }
 }
 
@@ -299,64 +283,86 @@ void scale(CsrGraph *g) {
     }
 }
 
-void *compute_pagerank(void *threadId) {
-    // You have to divide the work and assign it to threads to make this function parallel
-    int threadNum = *(int *) (threadId);
+// SYNCHRONZIED METHODS
+
+void *setLabels(void *threadIdPtr) {
+    int threadId = *(int *) (threadIdPtr);
+    //printf("Thread %d starting label set\n", threadId);
+    int num_nodes = graph->node_size();
+    for (int n = threadId; n <= num_nodes; n +=numThreads) {
+        pthread_mutex_lock(&graph->nodeLocks[n]);
+        graph->set_label(n, CURRENT, 1.0 / num_nodes);
+        pthread_mutex_unlock(&graph->nodeLocks[n]);
+    }
+    //printf("Thread %d ending label set\n", threadId);
+}
+
+
+void *computation(void *threadIdPtr) {
+    int threadId = *(int *) (threadIdPtr);
+
     int num_nodes = graph->node_size();
 
-    // BLOCK ONE START
 
-    for (int i = threadNum; i <= num_nodes; i += perThread) {
-        pthread_mutex_lock(&graph->nodeLocks[i]);
-        graph->set_label(i, CURRENT, 1.0 / num_nodes);
-        pthread_mutex_unlock(&graph->nodeLocks[i]);
+    //printf("Thread %d starting computation set\n", threadId);
+
+    for (int n = threadId; n <= num_nodes; n+=numThreads) {
+        double my_contribution = damping * graph->get_label(n, CURRENT) / (double) graph->get_out_degree(n);
+        for (int e = graph->edge_begin(n); e < graph->edge_end(n); e++) {
+            int dst = graph->get_edge_dst(e);
+            //printf("Populating neighbors of node %d this neighbor is node %d from thread %d\n", n, dst, threadId);
+
+            pthread_mutex_lock(&graph->nodeLocks[dst]);
+            graph->set_label(dst, NEXT, graph->get_label(dst, NEXT) + my_contribution);
+            pthread_mutex_unlock(&graph->nodeLocks[dst]);
+        }
+    }
+    //printf("Thread %d ending computation set\n", threadId);
+}
+
+void compute_pagerank(CsrGraph *g, const double threshold, const double damping) {
+    // You have to divide the work and assign it to threads to make this function parallel
+
+    // initialize
+    bool convergence = false;
+    int num_nodes = g->node_size();
+
+    //SETTING LABELS
+    for (int t = 0; t < numThreads; t++) {
+        threadArg[t] = t;
+        pthread_create(&handles[t], NULL, setLabels, &threadArg[t]);
+    }
+    for (int i = 0; i < numThreads; i++) {
+        pthread_join(handles[i], NULL);
     }
 
-    pthread_barrier_wait(&labelSettingBarrier);
-
-    // BLOCK ONE END
-    bool convergence = false;
+    printf("Labels set\n");
 
     do {
         // reset next labels
-        reset_next_label(graph, damping, threadNum);
+
+        reset_next_label(g, damping);
 
         // apply current node contribution to others
 
-        // BLOCK TWO START
-
-
-        for (int n = threadNum; n <= num_nodes; n += perThread) {
-            pthread_mutex_lock(&graph->nodeLocks[n]);
-            double my_contribution = damping * graph->get_label(n, CURRENT) / (double) graph->get_out_degree(n);
-            pthread_mutex_unlock(&graph->nodeLocks[n]);
-            for (int e = graph->edge_begin(n); e < graph->edge_end(n); e++) {
-                int dst = graph->get_edge_dst(e);
-                pthread_mutex_lock(&graph->nodeLocks[dst]);
-                graph->set_label(dst, NEXT, graph->get_label(dst, NEXT) + my_contribution);
-                pthread_mutex_unlock(&graph->nodeLocks[dst]);
-            }
-
+        for (int t = 0; t < numThreads; t++) {
+            threadArg[t] = t;
+            pthread_create(&handles[t], NULL, computation, &threadArg[t]);
         }
 
-        ++compBarrier;
-
-        while(compBarrier < )
-
-        // BLOCK TWO END
+        for (int i = 0; i < numThreads; i++) {
+            pthread_join(handles[i], NULL);
+        }
 
         // check the change across successive iterations to determine convergence
-
-        // BLOCK 3 START
-        convergence = is_converged(graph, threshold, threadNum);
-        // BLOCK 3 END
+        convergence = is_converged(g, threshold);
 
         // update current labels
-
-        // BLOCK 4 START
-        update_current_label(graph, threadNum);
-        // BLOCK 4 START
+        update_current_label(g);
     } while (!convergence);
+
+    // scale the sum to 1
+    scale(g);
 }
 
 void sort_and_print_label(CsrGraph *g, string out_file) {
@@ -382,13 +388,13 @@ void sort_and_print_label(CsrGraph *g, string out_file) {
     }
 }
 
+
 int main(int argc, char *argv[]) {
     // Ex: ./pagerank road-NY.dimacs road-NY.txt
-    if (argc < 4) {
-        cerr << "Usage: " << argv[0] << " <input.dimacs> <output_filename> <num threads>\n";
+    if (argc < 3) {
+        cerr << "Usage: " << argv[0] << " <input.dimacs> <output_filename>\n";
         return 0;
     }
-
 
     // make sure the input argument is valid
     ifstream f_dimacs(argv[1]);
@@ -400,40 +406,25 @@ int main(int argc, char *argv[]) {
     numThreads = stoi(argv[3]);
 
     // construct the CSR graph
-    graph = new CsrGraph(f_dimacs);
-
-    perThread = (int) (ceil((1.0 * graph->node_size()) / (numThreads)));
+    CsrGraph *g = new CsrGraph(f_dimacs);
 
     // define important constants for pagerank
     threshold = 1.0e-4;
     damping = 0.85;
 
-    pthread_barrier_init(&labelSettingBarrier, NULL, numThreads);
+    perThread = (int) (ceil((1.0 * g->node_size()) / (numThreads)));
 
-    for (int t = 0; t < numThreads; t++) {
-        threadArg[t] = t;
-        pthread_create(&handles[t], NULL, compute_pagerank, &threadArg[t]);
-    }
+    graph = g;
+
     // compute the pagerank using push-style method
-
-    for (int i = 0; i < numThreads; i++) {
-        pthread_join(handles[i], NULL);
-    }
-
-    scale(graph);
-
-    double sum = 0;
-    for (int i = 1; i <= graph->node_size(); ++i) {
-        sum += graph->get_label(i, CURRENT);
-    }
-    printf("%f\n", sum);
+    printf("Before compute\n");
+    compute_pagerank(g, threshold, damping);
 
     // sort and print the labels to the output file
-    sort_and_print_label(graph, argv[2]);
+    sort_and_print_label(g, argv[2]);
 
     // delete the allocated space to the graph avoid memory leak
-    delete graph;
+    delete g;
 
-    pthread_exit(NULL);
     return 0;
 }
