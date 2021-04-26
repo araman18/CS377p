@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <atomic>
 #include <boost/algorithm/string.hpp>
 
 using namespace std;
@@ -56,7 +55,7 @@ private:
 
 public:
 
-    pthread_mutex_t *nodeLocks;
+    pthread_spinlock_t *nodeLocks;
 
     CsrGraph() {
         // no dynamic allocated space used
@@ -80,6 +79,10 @@ public:
         }
 
         // clean up dynamic arrays
+        for(int i = 0; i < num_nodes + 2; ++i) {
+            pthread_spin_destroy(&nodeLocks[i]);
+        }
+
         delete[] node;
         delete[] nodeLocks;
         delete[] rp;
@@ -152,9 +155,9 @@ public:
 
         // allocate space for dynamic arrays
         node = new Node[num_nodes + 2];
-        nodeLocks = new pthread_mutex_t[num_nodes + 2];
+        nodeLocks = new pthread_spinlock_t[num_nodes + 2];
         for (int i = 0; i < num_nodes + 2; ++i) {
-            int status = pthread_mutex_init(&nodeLocks[i], NULL);
+            int status = pthread_spin_init(&nodeLocks[i], 0);
         }
         rp = new int[num_nodes + 2];
         ci = new int[num_edges + 2];
@@ -245,6 +248,8 @@ int perThread;
 double threshold;
 double damping;
 
+int lockVariant;
+
 bool cArray[MAX_THREADS];
 
 
@@ -294,9 +299,9 @@ void *setLabels(void *threadIdPtr) {
     //printf("Thread %d starting label set\n", threadId);
     int num_nodes = graph->node_size();
     for (int n = threadId; n <= num_nodes; n +=numThreads) {
-        pthread_mutex_lock(&graph->nodeLocks[n]);
+        pthread_spin_lock(&graph->nodeLocks[n]);
         graph->set_label(n, CURRENT, 1.0 / num_nodes);
-        pthread_mutex_unlock(&graph->nodeLocks[n]);
+        pthread_spin_unlock(&graph->nodeLocks[n]);
     }
     //printf("Thread %d ending label set\n", threadId);
 }
@@ -316,9 +321,9 @@ void *computation(void *threadIdPtr) {
             int dst = graph->get_edge_dst(e);
             //printf("Populating neighbors of node %d this neighbor is node %d from thread %d\n", n, dst, threadId);
 
-            pthread_mutex_lock(&graph->nodeLocks[dst]);
+            pthread_spin_lock(&graph->nodeLocks[dst]);
             graph->set_label(dst, NEXT, graph->get_label(dst, NEXT) + my_contribution);
-            pthread_mutex_unlock(&graph->nodeLocks[dst]);
+            pthread_spin_unlock(&graph->nodeLocks[dst]);
         }
     }
     //printf("Thread %d ending computation set\n", threadId);
@@ -443,8 +448,8 @@ void sort_and_print_label(CsrGraph *g, string out_file) {
 
 int main(int argc, char *argv[]) {
     // Ex: ./pagerank road-NY.dimacs road-NY.txt
-    if (argc < 3) {
-        cerr << "Usage: " << argv[0] << " <input.dimacs> <output_filename>\n";
+    if (argc < 5) {
+        cerr << "Usage: " << argv[0] << " <input.dimacs> <output_filename> <thread numbers> <lock num> \n";
         return 0;
     }
 
@@ -456,6 +461,8 @@ int main(int argc, char *argv[]) {
     }
 
     numThreads = stoi(argv[3]);
+
+
 
     // construct the CSR graph
     CsrGraph *g = new CsrGraph(f_dimacs);
