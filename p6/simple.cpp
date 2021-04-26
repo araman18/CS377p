@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <atomic>
 #include <boost/algorithm/string.hpp>
 
 using namespace std;
@@ -15,7 +16,7 @@ using namespace std;
 #define CURRENT 0
 #define NEXT 1
 
-#define MAX_THREADS 16
+#define MAX_THREADS 32
 
 class CsrGraph {
 // You shouldn't need to modify this class except for adding essential locks and relavent methods,
@@ -244,6 +245,9 @@ int perThread;
 double threshold;
 double damping;
 
+bool cArray[MAX_THREADS];
+
+
 void reset_next_label(CsrGraph *g, const double damping) {
     // Modify this function in any way you want to make pagerank parallel
     int num_nodes = g->node_size();
@@ -320,11 +324,30 @@ void *computation(void *threadIdPtr) {
     //printf("Thread %d ending computation set\n", threadId);
 }
 
+void *calcConverge(void *threadIdPtr) {
+    int threadId = *(int *) (threadIdPtr);
+
+    int num_nodes = graph->node_size();
+    bool result = true;
+    for (int n = threadId; n <= num_nodes; n+=numThreads) {
+        if(n == 0) {
+            continue;
+        }
+        const double cur_label = graph->get_label(n, CURRENT);
+        const double next_label = graph->get_label(n, NEXT);
+
+        if (fabs(next_label - cur_label) > threshold) {
+            result = false;
+            break;
+        }
+    }
+    cArray[threadId] = result;
+}
+
 void compute_pagerank(CsrGraph *g, const double threshold, const double damping) {
     // You have to divide the work and assign it to threads to make this function parallel
 
     // initialize
-    bool convergence = false;
     int num_nodes = g->node_size();
 
     //SETTING LABELS
@@ -338,8 +361,11 @@ void compute_pagerank(CsrGraph *g, const double threshold, const double damping)
 
     printf("Labels set\n");
 
+    bool convergence = false;
+
     do {
         // reset next labels
+        convergence = false;
 
         reset_next_label(g, damping);
 
@@ -355,7 +381,22 @@ void compute_pagerank(CsrGraph *g, const double threshold, const double damping)
         }
 
         // check the change across successive iterations to determine convergence
-        convergence = is_converged(g, threshold);
+
+        for (int t = 0; t < numThreads; t++) {
+            threadArg[t] = t;
+            pthread_create(&handles[t], NULL, calcConverge, &threadArg[t]);
+        }
+
+        for (int i = 0; i < numThreads; i++) {
+            pthread_join(handles[i], NULL);
+        }
+
+        convergence = true;
+
+        for(int i = 0; i < numThreads; ++i) {
+            convergence = convergence && cArray[i];
+
+        }
 
         // update current labels
         update_current_label(g);
