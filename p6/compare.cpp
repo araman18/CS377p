@@ -2,10 +2,12 @@
 #include <iomanip>
 #include <fstream>
 #include <vector>
+#include <array>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <boost/algorithm/string.hpp>
+#include <atomic>
 
 using namespace std;
 
@@ -27,7 +29,8 @@ private:
     // use an array of struct for labels
     struct Node {
         // labels[0] is the current label, labels[1] is the next label
-        double labels[2];
+        atomic<double> curr{0.0};
+        atomic<double> next{0.0};
     };
 
     // helper struct for COO
@@ -55,8 +58,6 @@ private:
 
 public:
 
-    pthread_spinlock_t *nodeLocks;
-
     CsrGraph() {
         // no dynamic allocated space used
         is_allocated = false;
@@ -78,13 +79,8 @@ public:
             return;
         }
 
-        // clean up dynamic arrays
-        for(int i = 0; i < num_nodes + 2; ++i) {
-            pthread_spin_destroy(&nodeLocks[i]);
-        }
 
         delete[] node;
-        delete[] nodeLocks;
         delete[] rp;
         delete[] ci;
         delete[] ai;
@@ -155,10 +151,6 @@ public:
 
         // allocate space for dynamic arrays
         node = new Node[num_nodes + 2];
-        nodeLocks = new pthread_spinlock_t[num_nodes + 2];
-        for (int i = 0; i < num_nodes + 2; ++i) {
-            int status = pthread_spin_init(&nodeLocks[i], 0);
-        }
         rp = new int[num_nodes + 2];
         ci = new int[num_edges + 2];
         ai = new int[num_edges + 2];
@@ -217,12 +209,18 @@ public:
 
     double get_label(int n, int which) {
         // return the current or next label for node n
-        return node[n].labels[which];
+        return which == 0 ? node[n].curr.load() : node[n].next.load();
     }
 
     void set_label(int n, int which, double label) {
         // set the current or next label for node n
-        node[n].labels[which] = label;
+        if(which == 0) {
+            double prev = node[n].curr;
+            node[n].curr.compare_exchange_weak(prev, label);
+        } else {
+            double prev = node[n].next;
+            node[n].next.compare_exchange_weak(prev, label);
+        }
     }
 
     int get_out_degree(int n) {
@@ -251,9 +249,6 @@ double damping;
 int lockVariant;
 
 bool cArray[MAX_THREADS];
-
-atomic<double> ad;
-
 
 void reset_next_label(CsrGraph *g, const double damping) {
     // Modify this function in any way you want to make pagerank parallel
@@ -301,9 +296,7 @@ void *setLabels(void *threadIdPtr) {
     //printf("Thread %d starting label set\n", threadId);
     int num_nodes = graph->node_size();
     for (int n = threadId; n <= num_nodes; n +=numThreads) {
-        pthread_spin_lock(&graph->nodeLocks[n]);
         graph->set_label(n, CURRENT, 1.0 / num_nodes);
-        pthread_spin_unlock(&graph->nodeLocks[n]);
     }
     //printf("Thread %d ending label set\n", threadId);
 }
@@ -447,8 +440,8 @@ void sort_and_print_label(CsrGraph *g, string out_file) {
 
 int main(int argc, char *argv[]) {
     // Ex: ./pagerank road-NY.dimacs road-NY.txt
-    if (argc < 5) {
-        cerr << "Usage: " << argv[0] << " <input.dimacs> <output_filename> <thread numbers> <lock num> \n";
+    if (argc < 4) {
+        cerr << "Usage: " << argv[0] << " <input.dimacs> <output_filename> <thread numbers>";
         return 0;
     }
 

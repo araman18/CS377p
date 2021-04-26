@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-pthread -std=c++11
-SOURCE=simple.cpp
+SOURCE=compare.cpp
 EXEC=pagerank
 
 : $(EXEC)
