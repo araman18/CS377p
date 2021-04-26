@@ -252,6 +252,8 @@ int lockVariant;
 
 bool cArray[MAX_THREADS];
 
+atomic<double> ad;
+
 
 void reset_next_label(CsrGraph *g, const double damping) {
     // Modify this function in any way you want to make pagerank parallel
@@ -312,7 +314,6 @@ void *computation(void *threadIdPtr) {
 
     int num_nodes = graph->node_size();
 
-
     //printf("Thread %d starting computation set\n", threadId);
 
     for (int n = threadId; n <= num_nodes; n+=numThreads) {
@@ -321,9 +322,7 @@ void *computation(void *threadIdPtr) {
             int dst = graph->get_edge_dst(e);
             //printf("Populating neighbors of node %d this neighbor is node %d from thread %d\n", n, dst, threadId);
 
-            pthread_spin_lock(&graph->nodeLocks[dst]);
             graph->set_label(dst, NEXT, graph->get_label(dst, NEXT) + my_contribution);
-            pthread_spin_unlock(&graph->nodeLocks[dst]);
         }
     }
     //printf("Thread %d ending computation set\n", threadId);
@@ -448,8 +447,8 @@ void sort_and_print_label(CsrGraph *g, string out_file) {
 
 int main(int argc, char *argv[]) {
     // Ex: ./pagerank road-NY.dimacs road-NY.txt
-    if (argc < 4) {
-        cerr << "Usage: " << argv[0] << " <input.dimacs> <output_filename> <thread numbers> \n";
+    if (argc < 5) {
+        cerr << "Usage: " << argv[0] << " <input.dimacs> <output_filename> <thread numbers> <lock num> \n";
         return 0;
     }
 
@@ -461,6 +460,8 @@ int main(int argc, char *argv[]) {
     }
 
     numThreads = stoi(argv[3]);
+
+
 
     // construct the CSR graph
     CsrGraph *g = new CsrGraph(f_dimacs);
