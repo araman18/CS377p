@@ -363,6 +363,9 @@ void compute_pagerank(CsrGraph *g, const double threshold, const double damping)
 
     bool convergence = false;
 
+    uint64_t execTime; /*time in nanoseconds */
+    struct timespec tick, tock;
+
     do {
         // reset next labels
         convergence = false;
@@ -370,6 +373,8 @@ void compute_pagerank(CsrGraph *g, const double threshold, const double damping)
         reset_next_label(g, damping);
 
         // apply current node contribution to others
+
+        clock_gettime(CLOCK_MONOTONIC_RAW, &tick);
 
         for (int t = 0; t < numThreads; t++) {
             threadArg[t] = t;
@@ -391,6 +396,10 @@ void compute_pagerank(CsrGraph *g, const double threshold, const double damping)
             pthread_join(handles[i], NULL);
         }
 
+        clock_gettime(CLOCK_MONOTONIC_RAW, &tock);
+
+        execTime += 1000000000 * (tock.tv_sec - tick.tv_sec) + tock.tv_nsec - tick.tv_nsec;
+
         convergence = true;
 
         for(int i = 0; i < numThreads; ++i) {
@@ -401,6 +410,8 @@ void compute_pagerank(CsrGraph *g, const double threshold, const double damping)
         // update current labels
         update_current_label(g);
     } while (!convergence);
+
+    printf("elapsed process CPU time for pagerank = %llu nanoseconds\n", (long long unsigned int) execTime);
 
     // scale the sum to 1
     scale(g);
